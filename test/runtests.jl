@@ -1,7 +1,9 @@
 using Tibber
 using Test
 using Plots
-if get(ENV, "CI", false)
+@show get(ENV, "CI", false)
+
+if get(ENV, "CI", false) == "true"
     using CondaPkg
     CondaPkg.add("tibber.py")
 else
