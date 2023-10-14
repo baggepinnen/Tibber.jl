@@ -43,6 +43,10 @@ function home!(ind::Int = 0; account = account[])
 end
 
 
+function update!()
+    account[].update()
+end
+
 function get_id(; home = home[])
     pyconvert(Any, home.id)
 end
@@ -201,6 +205,13 @@ function PriceInfo(t)
     PriceInfo(start_time, total, energy, tax, currency, level)
 end
 
+
+
+"""
+    fetch_priceinfo(; home)
+
+Fetch price info for current day and, if available, for the next day. Returns an array of `PriceInfo` objects of length 24 or 48, depending on whether the next day is available. Price info for the next day usually becomes available at 13:00.
+"""
 function fetch_priceinfo(; home = home[])
     i = pyconvert(Dict, home.cache)
     today = i["currentSubscription"]["priceInfo"]["today"]
@@ -221,10 +232,18 @@ end
     # link --> :x
     xdata = [permutedims(starttimes); permutedims(endtimes)][:]
     hover --> xdata
+    prices = _prep(getproperty.(data, :total))
+
+    line_z = -clamp.(prices, 0, 2)
+    # p = palette(:RdYlGn)
     @series begin
+        c --> :RdYlGn
+        palette --> :RdYlGn
         xticks --> round(xdata[1], Hour):Hour(2):xdata[end]
         ylabel --> "Total price ($(data[1].currency))"
-        xdata, _prep(getproperty.(data, :total))
+        line_z --> line_z
+        linewidth --> 5
+        xdata, prices
     end
 end
 
