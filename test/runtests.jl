@@ -1,15 +1,17 @@
-using Tibber
-using Test
-using Plots
 @show get(ENV, "CI", false)
 
 if get(ENV, "CI", false) == "true"
     using CondaPkg
     CondaPkg.add("tibber.py")
 else
-    ENV["JULIA_CONDAPKG_BACKEND"] = "Null"   # To handle the pthon installation manually
+    ENV["JULIA_CONDAPKG_BACKEND"] = "Null"   # To handle the python installation manually
     ENV["JULIA_PYTHONCALL_EXE"] = "python3"  # Configure your python call python binary
 end
+
+
+using Tibber
+using Test
+using Plots
 
 @testset "Tibber.jl" begin
 
