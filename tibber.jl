@@ -1,15 +1,13 @@
-ENV["JULIA_CONDAPKG_BACKEND"] = "Null"
-ENV["JULIA_PYTHONCALL_EXE"] = "python3"
+ENV["JULIA_CONDAPKG_BACKEND"] = "Null"   # To handle the pthon installation manually
+ENV["JULIA_PYTHONCALL_EXE"] = "python3"  # Configure your python call python binary
 
 using Tibber
 using ConfigEnv
 cd(@__DIR__)
 dotenv()
-TOKEN = ENV["TIBBER_TOKEN"]
-# using Tibber.PythonCall
-# using Tibber: home
 
-
+# TOKEN = ENV["TIBBER_TOKEN"] # Store your token in the environment variable TIBBER_TOKEN, for example, using COnfigEnv.jl and a .env file
+TOKEN = Tibber.tibber[].DEMO_TOKEN # We use a demo token here for demonstration purposes
 
 Tibber.account!(TOKEN)
 Tibber.home!()
@@ -25,4 +23,9 @@ Tibber.get_primary_heating_source()
 Tibber.get_has_ventilation_system()
 Tibber.get_main_fuse_size()
 
-Tibber.fetch_consumption("HOURLY", first=10)
+using Plots
+c = Tibber.fetch_consumption("HOURLY", first=10)
+plot(c)
+
+p = Tibber.fetch_priceinfo()
+plot(p)

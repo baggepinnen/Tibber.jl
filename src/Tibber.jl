@@ -1,3 +1,12 @@
+"""
+Initialize using
+```julia
+using Tibber
+Tibber.account!(TIBBER_TOKEN::String)
+Tibber.home!()
+```
+You can get your Tibber API token from https://developer.tibber.com/settings/access-token
+"""
 module Tibber
 
 using PythonCall
@@ -14,10 +23,21 @@ function __init__()
     tibber[] = pyimport("tibber")
 end
 
+
+"""
+    account!(token; tibber)
+
+Set your Tibber API token. You can get it from https://developer.tibber.com/settings/access-token
+"""
 function account!(token; tibber=tibber[])
     account[] = tibber.Account(token)
 end
 
+"""
+    home!(ind::Int = 0; account)
+
+Set the default home to the `ind`th home in the account. Defaults to the first home (python-style zero-based indexing).
+"""
 function home!(ind::Int = 0; account = account[])
     home[] = account.homes[ind]
 end
