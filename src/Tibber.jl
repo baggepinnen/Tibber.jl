@@ -20,7 +20,11 @@ const account = Ref(Py(nothing))
 const home = Ref(Py(nothing))
 
 function __init__()
-    tibber[] = pyimport("tibber")
+    try
+        tibber[] = pyimport("tibber")
+    catch
+        @error """Could not load python module tibber. Make sure you have installed it in the same python environment as PythonCall. Try manually loading PythonCall.jl and call `pyimport("tibber")`"""
+    end
 end
 
 
