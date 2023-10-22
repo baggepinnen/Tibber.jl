@@ -133,6 +133,9 @@ Fetch historical consumption data. Returns an array of `ConsumptionData` objects
 - `home`: Optionally override the default home.
 """
 @cast function fetch_consumption(when = "HOURLY"; first = nothing, last = nothing, home = home[])
+    update!()
+    first === nothing && last === nothing && (last = 24)
+
     data = home.fetch_consumption(when; first, last)
     map(data) do d
         from_time   = pyconvert(String, d.from_time)
@@ -163,6 +166,11 @@ end
     size --> (800,800)
     # link --> :x
     xdata = [permutedims(starttimes); permutedims(endtimes)][:]
+
+    df = dateformat"dd/mm HH"
+    xticks = round(xdata[1], Hour):Hour(2):xdata[end]
+    xticks = (xticks, Dates.format.(xticks, df))
+
     hover --> xdata
     @series begin
         xticks --> false
@@ -176,7 +184,7 @@ end
     end
     @series begin
         ylabel --> "Unit price ($(data[1].currency))"
-        xticks --> round(xdata[1], Hour):Hour(2):xdata[end]
+        xticks --> xticks
         xdata, _prep(getproperty.(data, :unit_price))
     end
 end
@@ -235,13 +243,13 @@ Fetch price info for current day and, if available, for the next day. Returns an
 The `offset` argument is added to the `energy` and `total` prices, useful to, e.g., add the cost of tranmission.
 """
 @cast function fetch_priceinfo(offset=0; home = home[])
+    update!()
     i = pyconvert(Dict, home.cache)
     today = i["currentSubscription"]["priceInfo"]["today"]
     tomorrow = i["currentSubscription"]["priceInfo"]["tomorrow"]
 
     today = map(i->PriceInfo(i; offset), today)
     tomorrow = map(i->PriceInfo(i; offset), tomorrow)
-    @info "TODO: add offset to price. Offset for tranmission fee"
     [today; tomorrow]
 end
 
@@ -257,14 +265,18 @@ end
     hover --> xdata
     prices = _prep(getproperty.(data, :total))
 
-    line_z = -clamp.(prices, 0, 2)
-    # p = palette(:RdYlGn)
+    df = dateformat"dd/mm HH"
+    
+    xticks = round(xdata[1], Hour):Hour(2):xdata[end]
+    xticks = (xticks, Dates.format.(xticks, df))
+    
     @series begin
+        clims --> (-3, -1)
         seriescolor --> :RdYlGn
         color_palette --> :RdYlGn
-        xticks --> round(xdata[1], Hour):Hour(2):xdata[end]
+        xticks --> xticks
         yguide --> "Total price ($(data[1].currency))"
-        line_z --> line_z
+        line_z --> -prices
         linewidth --> 5
         xdata, prices
     end

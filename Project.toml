@@ -1,7 +1,7 @@
 name = "Tibber"
 uuid = "da27883c-8256-4720-924b-e7be686627bb"
 authors = ["Fredrik Bagge Carlson"]
-version = "1.0.0-DEV"
+version = "1.0.0"
 
 [deps]
 Comonicon = "863f3e99-da2a-4334-8734-de3dacbe5542"
@@ -16,6 +16,8 @@ Comonicon = "1"
 ConfigEnv = "1"
 PythonCall = "0.9"
 RecipesBase = "1"
+Dates = "1.9"
+Printf = "1.9"
 julia = "1.9"
 
 [extras]

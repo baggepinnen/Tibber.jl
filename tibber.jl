@@ -6,7 +6,7 @@ using ConfigEnv
 cd(@__DIR__)
 dotenv()
 
-# TOKEN = ENV["TIBBER_TOKEN"] # Store your token in the environment variable TIBBER_TOKEN, for example, using COnfigEnv.jl and a .env file
+# TOKEN = ENV["TIBBER_TOKEN"] # Store your token in the environment variable TIBBER_TOKEN, for example, using ConfigEnv.jl and a .env file
 TOKEN = Tibber.tibber[].DEMO_TOKEN # We use a demo token here for demonstration purposes
 
 Tibber.account!(TOKEN)
