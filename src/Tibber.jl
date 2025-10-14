@@ -49,7 +49,10 @@ end
 
 @cast function update!()
     account[].update()
-    home[] = account[].homes[0]
+    sleep(0.1)
+    account[].update()
+    sleep(0.1)
+    home!()
 end
 
 function get_id(; home = home[])
@@ -126,7 +129,7 @@ end
 
 
 """
-    fetch_consumption(when = "HOURLY"; first = nothing, last = nothing, home)
+    fetch_consumption(when = "HOURLY"; first = nothing, last = nothing)
 
 Fetch historical consumption data. Returns an array of `ConsumptionData` objects.
 
@@ -134,13 +137,12 @@ Fetch historical consumption data. Returns an array of `ConsumptionData` objects
 - `when`: Options include `"HOURLY"`, `"DAILY"`, `"MONTHLY"`, `"YEARLY"`
 - `first`: A number of periods to fetch, e.g. `first=3` will fetch the first 3 periods available
 - `last`: A number of periods to fetch, e.g. `last=3` will fetch the last 3 periods available
-- `home`: Optionally override the default home.
 """
-@cast function fetch_consumption(when = "HOURLY"; first = nothing, last = nothing, home = home[])
+@cast function fetch_consumption(when = "HOURLY"; first = nothing, last = nothing)
     update!()
     first === nothing && last === nothing && (last = 24)
 
-    data = home.fetch_consumption(when; first, last)
+    data = home[].fetch_consumption(when; first, last)
     map(data) do d
         from_time   = pyconvert(String, d.from_time)
         to_time     = pyconvert(String, d.to_time)
@@ -176,20 +178,35 @@ end
     xticks = (xticks, Dates.format.(xticks, df))
 
     hover --> xdata
+
+    consumption = _prep(getproperty.(data, :consumption))
+    cum_cons = cumsum(consumption)
+    unit_price = _prep(getproperty.(data, :unit_price))
+    cost = _prep(getproperty.(data, :cost))
+    if any(ismissing, consumption)
+        @warn "missing values in consumption" consumption
+    elseif any(ismissing, unit_price)
+        @warn "missing values in unit_price" unit_price
+    else
+        @assert cost ≈ consumption .* unit_price
+    end
+    cost = consumption .* unit_price
+
+    ylims --> (0, Inf)
     @series begin
         xticks --> false
-        ylabel --> "Consumption"
-        xdata, _prep(getproperty.(data, :consumption))
+        ylabel --> ["Consumption" "Cumulative / 10"]
+        xdata, [consumption cum_cons ./ 10]
     end
     @series begin
         xticks --> false
         ylabel --> "Cost ($(data[1].currency))"
-        xdata, _prep(getproperty.(data, :cost))
+        xdata, cost
     end
     @series begin
         ylabel --> "Unit price ($(data[1].currency))"
         xticks --> xticks
-        xdata, _prep(getproperty.(data, :unit_price))
+        xdata, unit_price
     end
 end
 
@@ -211,14 +228,14 @@ end
 
 
 """
-    PriceInfo(t; offset = 0)
+    PriceInfo(t)
 
-Construct a PriceInfo object from a dictionary `t` returned by the Tibber API. `offset` is added to the `energy` and `total` prices, useful to, e.g., add the cost of tranmission.
+Construct a PriceInfo object from a dictionary `t` returned by the Tibber API. 
 """
-function PriceInfo(t; offset=0)
+function PriceInfo(t)
     start_time = pyconvert(String, t["startsAt"])
-    total      = pyconvert(Float64, t["total"]) + offset
-    energy     = pyconvert(Float64, t["energy"]) + offset
+    total      = pyconvert(Float64, t["total"])
+    energy     = pyconvert(Float64, t["energy"])
     tax        = pyconvert(Float64, t["tax"])
     currency   = pyconvert(String, t["currency"])
     level      = pyconvert(String, t["level"])
@@ -240,30 +257,53 @@ end
 
 
 """
-    fetch_priceinfo(offset=0; home)
+    fetch_priceinfo()
 
 Fetch price info for current day and, if available, for the next day. Returns an array of `PriceInfo` objects of length 24 or 48, depending on whether the next day is available. Price info for the next day usually becomes available at 13:00.
-
-The `offset` argument is added to the `energy` and `total` prices, useful to, e.g., add the cost of tranmission.
 """
-@cast function fetch_priceinfo(offset=0; home = home[])
+@cast function fetch_priceinfo()
     update!()
-    i = pyconvert(Dict, home.cache)
+    i = pyconvert(Dict, home[].cache)
     today = i["currentSubscription"]["priceInfo"]["today"]
     tomorrow = i["currentSubscription"]["priceInfo"]["tomorrow"]
 
-    today = map(i->PriceInfo(i; offset), today)
-    tomorrow = map(i->PriceInfo(i; offset), tomorrow)
+    today = map(i->PriceInfo(i), today)
+    tomorrow = map(i->PriceInfo(i), tomorrow)
     [today; tomorrow]
+end
+
+"""
+    fetch_price_range(resolution = "HOURLY"; first = nothing, last = nothing, before = nothing, after = nothing)
+
+Fetch historical price data with custom resolution. Returns an array of `PriceInfo` objects.
+
+# Arguments:
+- `resolution`: Options include `"HOURLY"`, `"DAILY"`, `"QUARTERLY_HOURLY"`
+- `first`: Number of periods to fetch from start
+- `last`: Number of periods to fetch from end
+- `before`: Base64 encoded ISO 8601 datetime to fetch before
+- `after`: Base64 encoded ISO 8601 datetime to fetch after
+"""
+@cast function fetch_price_range(resolution = "HOURLY"; first = nothing, last = nothing, before = nothing, after = nothing)
+    update!()
+
+    price_info = home[].current_subscription.price_info
+    data = price_info.fetch_range(resolution; first, last, before, after)
+
+    nodes = pyconvert(Vector, data.nodes)
+    map(nodes) do node
+        t = pyconvert(Dict, node.cache)
+        PriceInfo(t)
+    end
 end
 
 @recipe function plot(data::Vector{PriceInfo})
     starttimes = getproperty.(data, :start_time)
-    endtimes = starttimes + Hour(1)
+    endtimes = starttimes .+ Hour(1)
     xrotation --> 45
 
     legend --> false
-    size --> (800,800)
+    size --> (1000,700)
     # link --> :x
     xdata = [permutedims(starttimes); permutedims(endtimes)][:]
     hover --> xdata
