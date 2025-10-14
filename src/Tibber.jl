@@ -278,7 +278,7 @@ end
 Fetch historical price data with custom resolution. Returns an array of `PriceInfo` objects.
 
 # Arguments:
-- `resolution`: Options include `"HOURLY"`, `"DAILY"`, `"QUARTERLY_HOURLY"`
+- `resolution`: Options include `"HOURLY"`, `"DAILY"`, `"QUARTER_HOURLY"`
 - `first`: Number of periods to fetch from start
 - `last`: Number of periods to fetch from end
 - `before`: Base64 encoded ISO 8601 datetime to fetch before
@@ -287,8 +287,8 @@ Fetch historical price data with custom resolution. Returns an array of `PriceIn
 @cast function fetch_price_range(resolution = "HOURLY"; first = nothing, last = nothing, before = nothing, after = nothing)
     update!()
 
-    price_info = home[].current_subscription.price_info
-    data = price_info.fetch_range(resolution; first, last, before, after)
+    subscription = home[].current_subscription
+    data = subscription.fetch_price_info_range(resolution; first, last, before, after)
 
     nodes = pyconvert(Vector, data.nodes)
     map(nodes) do node
@@ -299,7 +299,18 @@ end
 
 @recipe function plot(data::Vector{PriceInfo})
     starttimes = getproperty.(data, :start_time)
-    endtimes = starttimes .+ Hour(1)
+
+    # Calculate endtimes dynamically based on actual data intervals
+    if length(starttimes) >= 2
+        # Use next start time as end time for each period
+        # For the last point, infer the interval from previous points
+        interval = starttimes[end] - starttimes[end-1]
+        endtimes = [starttimes[2:end]; starttimes[end] + interval]
+    else
+        # Fallback for single data point
+        endtimes = starttimes .+ Hour(1)
+    end
+
     xrotation --> 45
 
     legend --> false
@@ -310,8 +321,11 @@ end
     prices = _prep(getproperty.(data, :total))
 
     df = dateformat"dd/mm HH"
-    
-    xticks = round(xdata[1], Hour):Hour(2):xdata[end]
+
+    # Adaptive tick spacing based on data range
+    time_range = xdata[end] - xdata[1]
+    tick_interval = time_range > Hour(36) ? Hour(4) : Hour(2)
+    xticks = round(xdata[1], Hour):tick_interval:xdata[end]
     xticks = (xticks, Dates.format.(xticks, df))
     
     @series begin
