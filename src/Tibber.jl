@@ -230,15 +230,15 @@ end
 """
     PriceInfo(t)
 
-Construct a PriceInfo object from a dictionary `t` returned by the Tibber API. 
+Construct a PriceInfo object from a python Price info `t` returned by the Tibber API. 
 """
 function PriceInfo(t)
-    start_time = pyconvert(String, t["startsAt"])
-    total      = pyconvert(Float64, t["total"])
-    energy     = pyconvert(Float64, t["energy"])
-    tax        = pyconvert(Float64, t["tax"])
-    currency   = pyconvert(String, t["currency"])
-    level      = pyconvert(String, t["level"])
+    start_time = pyconvert(String, t.starts_at)
+    total      = pyconvert(Float64, t.total)
+    energy     = pyconvert(Float64, t.energy)
+    tax        = pyconvert(Float64, t.tax)
+    currency   = pyconvert(String, t.currency)
+    level      = pyconvert(String, t.level)
     start_time = DateTime(start_time[1:19], dateformat"Y-m-dTH:M:S")
     PriceInfo(start_time, total, energy, tax, currency, level)
 end
@@ -263,12 +263,10 @@ Fetch price info for current day and, if available, for the next day. Returns an
 """
 @cast function fetch_priceinfo()
     update!()
-    i = pyconvert(Dict, home[].cache)
-    today = i["currentSubscription"]["priceInfo"]["today"]
-    tomorrow = i["currentSubscription"]["priceInfo"]["tomorrow"]
-
-    today = map(i->PriceInfo(i), today)
-    tomorrow = map(i->PriceInfo(i), tomorrow)
+    subscription = home[].current_subscription
+    price_info = subscription.fetch_price_info("QUARTER_HOURLY")
+    today = map(i->PriceInfo(i), price_info.today)
+    tomorrow = map(i->PriceInfo(i), price_info.tomorrow)
     [today; tomorrow]
 end
 
@@ -314,17 +312,17 @@ end
     xrotation --> 45
 
     legend --> false
-    size --> (1000,700)
+    size --> (1400,800)
     # link --> :x
     xdata = [permutedims(starttimes); permutedims(endtimes)][:]
     hover --> xdata
     prices = _prep(getproperty.(data, :total))
 
-    df = dateformat"dd/mm HH"
+    df = dateformat"HH"
 
     # Adaptive tick spacing based on data range
     time_range = xdata[end] - xdata[1]
-    tick_interval = time_range > Hour(36) ? Hour(4) : Hour(2)
+    tick_interval = time_range > Hour(36) ? Hour(1) : Hour(1)
     xticks = round(xdata[1], Hour):tick_interval:xdata[end]
     xticks = (xticks, Dates.format.(xticks, df))
     
