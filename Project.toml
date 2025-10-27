@@ -1,6 +1,6 @@
 name = "Tibber"
 uuid = "da27883c-8256-4720-924b-e7be686627bb"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["Fredrik Bagge Carlson"]
 
 [deps]
